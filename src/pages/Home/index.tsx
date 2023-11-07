@@ -1,7 +1,10 @@
+import { useEffect, useState } from 'react'
+
 import { Play } from 'phosphor-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as zod from 'zod'
+import { differenceInSeconds } from 'date-fns'
 
 import {
   CountdownContainer,
@@ -12,7 +15,6 @@ import {
   StartCountdownButton,
   TaskInput,
 } from './styles'
-import { useState } from 'react'
 
 // validando objeto
 const newCycleFormValidationSchema = zod.object({
@@ -35,6 +37,7 @@ interface Cycle {
   id: string
   task: string
   minutesAmount: number
+  startDate: Date
 }
 
 export function Home() {
@@ -49,8 +52,39 @@ export function Home() {
       minutesAmount: 0,
     },
   })
-
   const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId)
+
+  useEffect(() => {
+    let interval: number
+
+    if (activeCycle) {
+      interval = setInterval(() => {
+        setAmountSecondsPassed(
+          differenceInSeconds(new Date(), activeCycle.startDate),
+        )
+      }, 1000)
+    }
+
+    // limpando o que eu fiz no useEffect anterior
+    return () => {
+      clearInterval(interval)
+    }
+  }, [activeCycle])
+
+  function handleCreateNewCycle(data: NewCycleFormData) {
+    const newCycle: Cycle = {
+      id: String(new Date().getTime()),
+      task: data.task,
+      minutesAmount: data.minutesAmount,
+      startDate: new Date(),
+    }
+
+    setCycles((state) => [...state, newCycle])
+    setActiveCycleId(newCycle.id)
+    setAmountSecondsPassed(0)
+
+    reset()
+  }
 
   const totalSeconds = activeCycle ? activeCycle.minutesAmount * 60 : 0
   const currentSeconds = activeCycle ? totalSeconds - amountSecondsPassed : 0
@@ -61,19 +95,6 @@ export function Home() {
   // preenchendo no começo para sempre ter 2 caracteres, em caso de minutesAmount < 9
   const minutes = String(minutesAmount).padStart(2, '0')
   const seconds = String(secondsAmount).padStart(2, '0')
-
-  function handleCreateNewCycle(data: NewCycleFormData) {
-    const newCycle: Cycle = {
-      id: String(new Date().getTime()),
-      task: data.task,
-      minutesAmount: data.minutesAmount,
-    }
-
-    setCycles((state) => [...state, newCycle])
-    setActiveCycleId(newCycle.id)
-
-    reset()
-  }
 
   const task = watch('task')
   const isSubmitDisabled = !task
